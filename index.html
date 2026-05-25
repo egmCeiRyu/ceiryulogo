@@ -3,11 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Fixed Anchor</title>
+  <title>AR Project - Fixado Sem Erros</title>
+  
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
+
   <script src="bundle.js"></script>
+
+  <script>
+    let alvoDetectado PeloMenosUmaVez = false;
+
+    // Aguarda o motor do 8th Wall carregar na página
+    window.addEventListener('xrloaded', () => {
+      
+      // Escuta o evento nativo de quando a câmera acha o anime
+      window.addEventListener('xrimagefound', (event) => {
+        if (event.detail.name === 'marker' && !alvoDetectadoPeloMenosUmaVez) {
+          alvoDetectadoPeloMenosUmaVez = true;
+          console.log("🎯 Primeiro scan feito! Travando o personagem na cena...");
+
+          // Deixa o motor processar o primeiro frame do modelo
+          setTimeout(() => {
+            if (window.ecs && window.ecs.application && window.ecs.application.scene) {
+              const scene = window.ecs.application.scene;
+              
+              // O ID do componente de imagem do seu projeto
+              const idDoImageTarget = "643be4c9-fa9d-4816-b0ec-114d3956b633";
+              const entidadeAlvo = scene.entities[idDoImageTarget];
+
+              if (entidadeAlvo) {
+                // 🔥 O TRUQUE DEFINITIVO:
+                // Interceptamos o componente que o 8th Wall usa para esconder o objeto.
+                // Substituímos a função de 'visible' para retornar SEMPRE true.
+                // Assim, quando o motor mandar o comando "esconda o objeto porque o papel sumiu",
+                // o nosso código ignora e mantém o personagem visível na tela para sempre!
+                if (entidadeAlvo.visibleComponent) {
+                  Object.defineProperty(entidadeAlvo.visibleComponent, 'visible', {
+                    get: () => true,
+                    set: () => {}, // Engana o motor impedindo-o de mudar para false
+                    configurable: false
+                  });
+                }
+
+                // Desliga o rastreador de imagem para ele parar de atualizar a rotação com o papel.
+                // O personagem agora fica ancorado na última posição espacial calculada pelo SLAM.
+                if (window.XR8 && window.XR8.XrController) {
+                  window.XR8.XrController.configure({ imageTargetData: [] });
+                }
+                
+                console.log("🔒 Personagem imobilizado e fixado no mundo real!");
+              }
+            }
+          }, 100);
+        }
+      });
+    });
+  </script>
+
 </body>
 </html>
