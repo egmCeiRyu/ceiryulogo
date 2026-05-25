@@ -1,1 +1,92 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty Project</title><meta itemprop="name" content="Empty Project"><meta name="twitter:title" content="Empty Project"><meta property="og:title" content="Empty Project"><meta property="og:site_name" content="Empty Project"><meta name="description" content="Start with a blank project."><meta itemprop="description" content="Start with a blank project."><meta property="og:description" content="Start with a blank project."><meta name="twitter:description" content="Start with a blank project."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script></head><body><script src="bundle.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AR Project - Fixed Anchor</title>
+  <meta itemprop="name" content="AR Project">
+  <meta name="description" content="Escanear uma vez e fixar no mundo via SLAM">
+  
+  <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
+  <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
+
+  <style>
+    /* Estilos padrões para garantir que a câmera ocupe a tela toda */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <script src="bundle.js"></script>
+
+  <script>
+    // Variável de controle para sabermos se já escaneou a primeira vez
+    let jaEscaneou = false;
+
+    // Aguarda o motor do 8th Wall carregar completamente na página
+    window.addEventListener('xrloaded', () => {
+      
+      // Escuta o evento global de quando QUALQUER imagem alvo é encontrada
+      window.addEventListener('xrimagefound', (event) => {
+        // Verifica se o alvo lido é o seu marcador ('marker')
+        if (event.detail.name === 'marker' && !jaEscaneou) {
+          jaEscaneou = true;
+          console.log("🎯 Primeiro escaneamento detectado! Fixando personagem no mundo...");
+
+          // Captura a posição e rotação tridimensional exata de onde o papel estava na mesa
+          const posicaoDoAlvo = event.detail.position;
+          const rotacaoDoAlvo = event.detail.rotation;
+          const escalaDoAlvo = event.detail.scale || {x: 1, y: 1, z: 1};
+
+          // Executa a busca na árvore ECS interna do 8th Wall para achar a entidade do modelo 3D
+          if (window.ecs && window.ecs.application && window.ecs.application.scene) {
+            const cenaEcs = window.ecs.application.scene;
+            
+            // Procura o ID do componente do modelo 3D (Untitled.glb) cadastrado no seu bundle
+            const idDoModelo = "e35dbf9c-8de2-468e-9449-f9563e988696";
+            const idDoImageTarget = "643be4c9-fa9d-4816-b0ec-114d3956b633";
+            
+            const entidadeModelo = cenaEcs.entities[idDoModelo];
+            const entidadeAlvo = cenaEcs.entities[idDoImageTarget];
+
+            if (entidadeModelo) {
+              // 1. Mudamos o "pai" do modelo 3D. Tiramos ele de dentro do Image Target 
+              // e jogamos ele na Raiz do Espaço do Mundo (Default Space), desvinculando-o do papel.
+              if (entidadeAlvo && entidadeAlvo.parent) {
+                cenaEcs.changeParent(entidadeModelo, entidadeAlvo.parent);
+              }
+
+              // 2. Aplicamos a posição exata detectada pela câmera diretamente no objeto,
+              // transformando as coordenadas locais do papel em coordenadas fixas do mundo real (SLAM).
+              if (entidadeModelo.transform) {
+                entidadeModelo.transform.position = [posicaoDoAlvo.x, posicaoDoAlvo.y, posicaoDoAlvo.z];
+                entidadeModelo.transform.rotation = [rotacaoDoAlvo.x,  rotacaoDoAlvo.y,  rotacaoDoAlvo.z, event.detail.rotation.w || 1];
+                entidadeModelo.transform.scale = [escalaDoAlvo.x, escalaDoAlvo.y, escalaDoAlvo.z];
+              }
+
+              // 3. Forçamos o parâmetro de visibilidade a ficar estático como TRUE.
+              // Isso anula a ordem padrão do bundle que dizia "se perder o papel de vista, mude para false".
+              if (entidadeModelo.visibleComponent) {
+                Object.defineProperty(entidadeModelo.visibleComponent, 'visible', {
+                  get: () => true,
+                  set: () => {}, // Ignora qualquer comando do motor tentando ocultar o modelo de novo
+                  configurable: true
+                });
+              }
+              
+              console.log("✅ Personagem solto no mundo! Pode tirar o papel da mesa.");
+            }
+          }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
