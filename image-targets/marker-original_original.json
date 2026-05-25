@@ -1,0 +1,23 @@
+{
+  "type": "PLANAR",
+  "properties": {
+    "top": 0,
+    "left": 125,
+    "width": 750,
+    "height": 1000,
+    "isRotated": false,
+    "originalWidth": 1000,
+    "originalHeight": 1000
+  },
+  "imagePath": "image-targets/marker-original_original_luminance.png",
+  "metadata": null,
+  "name": "marker-original_original",
+  "resources": {
+    "originalImage": "marker-original_original_original.png",
+    "croppedImage": "marker-original_original_cropped.png",
+    "thumbnailImage": "marker-original_original_thumbnail.png",
+    "luminanceImage": "marker-original_original_luminance.png"
+  },
+  "created": 1779687451477,
+  "updated": 1779687451477
+}
