@@ -64,7 +64,6 @@
     <script src="bundle.js"></script>
 
     <script>
-        // Inicializa o módulo de captura do 8th Wall
         window.addEventListener('xrloaded', () => {
             if (window.XR8 && XR8.canvasScreenshot) {
                 XR8.addCameraPipelineModule(XR8.canvasScreenshot().cameraPipelineModule());
@@ -91,26 +90,21 @@
             }
 
             try {
-                // 1. Captura o ecrã através do SDK do 8th Wall
                 let base64Data = await XR8.canvasScreenshot().takeScreenshot();
                 
                 if (!base64Data) {
                     throw new Error("Data empty");
                 }
 
-                // 2. Garante que o cabeçalho Data URL está correto (remove duplicados se o SDK já enviar com cabeçalho)
-                let dataUrl = "";
-                if (base64Data.startsWith('data:')) {
-                    dataUrl = base64Data;
-                } else {
-                    dataUrl = "data:image/jpeg;base64," + base64Data;
-                }
+                let dataUrl = base64Data.startsWith('data:') ? base64Data : "data:image/jpeg;base64," + base64Data;
                 
-                // 3. Tenta processar o ficheiro para o Menu de Partilha (Share Sheet)
+                // 【修正】名前を短く設定 (例: AR_Photo_452.jpg)
+                const randomNumber = Math.floor(Math.random() * 900) + 100; // 3 dígitos aleatórios (100 a 999)
+                const filename = `AR_Photo_${randomNumber}.jpg`;
+
                 try {
                     const response = await fetch(dataUrl);
                     const blob = await response.blob();
-                    const filename = `screenshot_${Date.now()}.jpg`;
                     const file = new File([blob], filename, { type: 'image/jpeg' });
 
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -119,22 +113,20 @@
                             title: 'AR Photo',
                             text: 'ARで撮影した写真です！'
                         });
-                        return; // Sucesso total, encerra aqui.
+                        return;
                     }
                 } catch (shareError) {
-                    console.warn("Falha ao abrir o menu de partilha nativo, a tentar método alternativo...", shareError);
+                    console.warn("Share failed, using fallback...", shareError);
                 }
 
-                // 4. MÉTODO ALTERNATIVO (Fallback Seguro se o Share falhar ou for bloqueado pelo iOS)
-                // Abre a imagem diretamente numa nova janela para o utilizador segurar o dedo e salvar.
+                // Fallback de Download ou Popup com nome curto
                 const newWindow = window.open();
                 if (newWindow) {
                     newWindow.document.write(`<img src="${dataUrl}" style="width:100%; height:auto;" />`);
-                    newWindow.document.title = "Screenshot";
+                    newWindow.document.title = filename;
                 } else {
-                    // Se até o popup for bloqueado, força o download clássico
                     const link = document.createElement('a');
-                    link.download = `screenshot_${Date.now()}.jpg`;
+                    link.download = filename;
                     link.href = dataUrl;
                     document.body.appendChild(link);
                     link.click();
@@ -142,7 +134,7 @@
                 }
 
             } catch (error) {
-                console.error("Erro geral na captura:", error);
+                console.error("Error:", error);
                 alert("写真の処理中にエラーが発生しました。");
             }
         });
