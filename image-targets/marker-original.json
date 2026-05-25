@@ -1,0 +1,23 @@
+{
+  "type": "PLANAR",
+  "properties": {
+    "top": 0,
+    "left": 250,
+    "width": 750,
+    "height": 1000,
+    "isRotated": false,
+    "originalWidth": 1000,
+    "originalHeight": 1000
+  },
+  "imagePath": "image-targets/maker-original_luminance.png",
+  "metadata": null,
+  "name": "maker-original",
+  "resources": {
+    "originalImage": "maker-original_original.png",
+    "croppedImage": "maker-original_cropped.png",
+    "thumbnailImage": "maker-original_thumbnail.png",
+    "luminanceImage": "maker-original_luminance.png"
+  },
+  "created": 1779676106355,
+  "updated": 1779676128364
+}

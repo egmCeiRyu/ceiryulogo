@@ -2,7 +2,7 @@
   "type": "PLANAR",
   "properties": {
     "top": 0,
-    "left": 125,
+    "left": 250,
     "width": 750,
     "height": 1000,
     "isRotated": false,
@@ -19,5 +19,5 @@
     "luminanceImage": "marker-original_original_luminance.png"
   },
   "created": 1779687451477,
-  "updated": 1779687451477
+  "updated": 1779689572551
 }
