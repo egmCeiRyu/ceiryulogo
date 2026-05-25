@@ -48,35 +48,33 @@
 
     <script src="bundle.js"></script>
 
-    <script>
+<script>
         document.getElementById('screenshot').addEventListener('click', () => {
-            // 1. Procura pelo canvas que o 8th Wall / Three.js está renderizando
+            // 1. 8th Wallが描画しているcanvas要素を取得
             const canvas = document.querySelector('canvas');
             
             if (canvas) {
                 try {
-                    // 2. Converte o conteúdo do canvas para uma imagem base64
-                    // Nota: O 8th Wall configura o WebGL com 'preserveDrawingBuffer: true' por padrão, 
-                    // o que permite capturar a imagem diretamente assim.
-                    const dataUrl = canvas.toDataURL('image/png');
+                    // 2. 画質92%のJPG形式（image/jpeg）に変換
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
                     
-                    // 3. Cria um link temporário para forçar o download
+                    // 3. ダウンロード用の一次的リンクを作成（拡張子は .jpg）
                     const link = document.createElement('a');
-                    link.download = `screenshot_${Date.now()}.png`;
+                    link.download = `screenshot_${Date.now()}.jpg`;
                     link.href = dataUrl;
                     
-                    // 4. Dispara o clique de download
+                    // 4. 自動的にクリックしてダウンロードを実行
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     
-                    console.log("Screenshot capturada com sucesso!");
+                    console.log("スクリーンショットがJPG形式で正常に保存されました！");
                 } catch (error) {
-                    console.error("Erro ao tirar a screenshot:", error);
-                    alert("Não foi possível salvar a imagem devido a restrições de segurança (CORS) ou do navegador.");
+                    console.error("スクリーンショットの撮影に失敗しました:", error);
+                    alert("ブラウザの制限、またはセキュリティ（CORS）の影響で画像を保存できませんでした。");
                 }
             } else {
-                console.error("Canvas do AR não foi encontrado na tela.");
+                console.error("ARのCanvasが見つかりませんでした。");
             }
         });
     </script>
