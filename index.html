@@ -17,21 +17,19 @@
     <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 
     <style>
-        /* 【新規】カメラが起動するまで画面全体を隠すスタイル */
         body {
-            background-color: #000000; /* カメラ起動前は黒画面（またはローディング画面） */
+            background-color: #000000;
         }
         
         canvas {
             opacity: 0;
-            transition: opacity 0.5s ease; /* ふわっと表示させるアニメーション */
+            transition: opacity 0.5s ease;
         }
 
         canvas.camera-ready {
             opacity: 1 !important;
         }
 
-        /* スクリーンショットボタンのスタイリング */
         .screenshot-btn {
             position: absolute;
             bottom: 30px;
@@ -47,14 +45,13 @@
             outline: none;
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
             transition: transform 0.1s ease, background-color 0.2s;
-            visibility: hidden; /* カメラが起動するまでボタンも隠す */
+            visibility: hidden;
         }
 
         .screenshot-btn.camera-ready {
             visibility: visible;
         }
 
-        /* ボタンを押したときのエフェクト */
         .screenshot-btn:active {
             transform: translateX(-50%) scale(0.9);
             background-color: rgba(255, 255, 255, 0.9);
@@ -67,75 +64,85 @@
     <script src="bundle.js"></script>
 
     <script>
-        // ページ読み込み時に8th Wallのスクリーンショットモジュールを有効化
+        // Inicializa o módulo de captura do 8th Wall
         window.addEventListener('xrloaded', () => {
             if (window.XR8 && XR8.canvasScreenshot) {
                 XR8.addCameraPipelineModule(XR8.canvasScreenshot().cameraPipelineModule());
                 console.log("8th Wall Screenshot module loaded.");
             }
 
-            // 【新規】8th Wallのカメラフィードが実際に開始されたイベントを検知
             XR8.addCameraPipelineModule({
                 name: 'camera-ready-detector',
                 onStart: () => {
-                    console.log("Camera is running and active!");
-                    
-                    // カメラが無事に起動したら、一瞬遅らせて3Dとキャンバスを綺麗にフェードイン表示させる
                     setTimeout(() => {
                         const canvas = document.querySelector('canvas');
                         const btn = document.getElementById('screenshot');
-                        
                         if (canvas) canvas.classList.add('camera-ready');
                         if (btn) btn.classList.add('camera-ready');
-                    }, 300); // 300msの微調整（環境に合わせて変更可能）
+                    }, 300);
                 }
             });
         });
 
-        // スクリーンショット撮影ロジック
         document.getElementById('screenshot').addEventListener('click', async () => {
             if (typeof XR8 === 'undefined' || !XR8.canvasScreenshot) {
-                console.error("XR8 または Screenshot モジュールが見つかりません。");
+                console.error("XR8 Not ready");
                 return;
             }
 
             try {
-                // 1. 8th WallのAPIからBase64文字列を取得
-                const base64Data = await XR8.canvasScreenshot().takeScreenshot();
+                // 1. Captura o ecrã através do SDK do 8th Wall
+                let base64Data = await XR8.canvasScreenshot().takeScreenshot();
                 
                 if (!base64Data) {
-                    throw new Error("スクリーンショットのデータが空です。");
+                    throw new Error("Data empty");
                 }
 
-                // 2. データをJPGのデータURLスキームに変形
-                const dataUrl = "data:image/jpeg;base64," + base64Data;
-                
-                // 3. Base64データをバイナリ（Blob）に変換
-                const response = await fetch(dataUrl);
-                const blob = await response.blob();
-                
-                // 4. ファイルオブジェクトを作成
-                const filename = `screenshot_${Date.now()}.jpg`;
-                const file = new File([blob], filename, { type: 'image/jpeg' });
-
-                // 5. ネイティブシェア画面の起動チェック
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'AR Photo',
-                        text: 'ARで撮影した写真です！'
-                    });
+                // 2. Garante que o cabeçalho Data URL está correto (remove duplicados se o SDK já enviar com cabeçalho)
+                let dataUrl = "";
+                if (base64Data.startsWith('data:')) {
+                    dataUrl = base64Data;
                 } else {
-                    // 通常のダウンロードフォールバック
+                    dataUrl = "data:image/jpeg;base64," + base64Data;
+                }
+                
+                // 3. Tenta processar o ficheiro para o Menu de Partilha (Share Sheet)
+                try {
+                    const response = await fetch(dataUrl);
+                    const blob = await response.blob();
+                    const filename = `screenshot_${Date.now()}.jpg`;
+                    const file = new File([blob], filename, { type: 'image/jpeg' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'AR Photo',
+                            text: 'ARで撮影した写真です！'
+                        });
+                        return; // Sucesso total, encerra aqui.
+                    }
+                } catch (shareError) {
+                    console.warn("Falha ao abrir o menu de partilha nativo, a tentar método alternativo...", shareError);
+                }
+
+                // 4. MÉTODO ALTERNATIVO (Fallback Seguro se o Share falhar ou for bloqueado pelo iOS)
+                // Abre a imagem diretamente numa nova janela para o utilizador segurar o dedo e salvar.
+                const newWindow = window.open();
+                if (newWindow) {
+                    newWindow.document.write(`<img src="${dataUrl}" style="width:100%; height:auto;" />`);
+                    newWindow.document.title = "Screenshot";
+                } else {
+                    // Se até o popup for bloqueado, força o download clássico
                     const link = document.createElement('a');
-                    link.download = filename;
+                    link.download = `screenshot_${Date.now()}.jpg`;
                     link.href = dataUrl;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                 }
+
             } catch (error) {
-                console.error("エラーが発生しました:", error);
+                console.error("Erro geral na captura:", error);
                 alert("写真の処理中にエラーが発生しました。");
             }
         });
