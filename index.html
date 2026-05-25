@@ -1,1 +1,83 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Empty Project</title><meta itemprop="name" content="Empty Project"><meta name="twitter:title" content="Empty Project"><meta property="og:title" content="Empty Project"><meta property="og:site_name" content="Empty Project"><meta name="description" content="Start with a blank project."><meta itemprop="description" content="Start with a blank project."><meta property="og:description" content="Start with a blank project."><meta name="twitter:description" content="Start with a blank project."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script></head><body><script src="bundle.js"></script></body></html>
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Empty Project</title>
+    <meta itemprop="name" content="Empty Project">
+    <meta name="twitter:title" content="Empty Project">
+    <meta property="og:title" content="Empty Project">
+    <meta property="og:site_name" content="Empty Project">
+    <meta name="description" content="Start with a blank project.">
+    <meta itemprop="description" content="Start with a blank project.">
+    <meta property="og:description" content="Start with a blank project.">
+    <meta name="twitter:description" content="Start with a blank project.">
+    
+    <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
+    <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
+
+    <style>
+        /* Estilização do botão de Screenshot */
+        .screenshot-btn {
+            position: absolute;
+            bottom: 30px; /* Distância do fundo da tela */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999; /* Garante que fique acima do canvas do AR */
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: 5px solid #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s ease, background-color 0.2s;
+        }
+
+        /* Efeito de clique do botão */
+        .screenshot-btn:active {
+            transform: translateX(-50%) scale(0.9);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <button id="screenshot" class="screenshot-btn" aria-label="Tirar Foto"></button>
+
+    <script src="bundle.js"></script>
+
+    <script>
+        document.getElementById('screenshot').addEventListener('click', () => {
+            // 1. Procura pelo canvas que o 8th Wall / Three.js está renderizando
+            const canvas = document.querySelector('canvas');
+            
+            if (canvas) {
+                try {
+                    // 2. Converte o conteúdo do canvas para uma imagem base64
+                    // Nota: O 8th Wall configura o WebGL com 'preserveDrawingBuffer: true' por padrão, 
+                    // o que permite capturar a imagem diretamente assim.
+                    const dataUrl = canvas.toDataURL('image/png');
+                    
+                    // 3. Cria um link temporário para forçar o download
+                    const link = document.createElement('a');
+                    link.download = `screenshot_${Date.now()}.png`;
+                    link.href = dataUrl;
+                    
+                    // 4. Dispara o clique de download
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    console.log("Screenshot capturada com sucesso!");
+                } catch (error) {
+                    console.error("Erro ao tirar a screenshot:", error);
+                    alert("Não foi possível salvar a imagem devido a restrições de segurança (CORS) ou do navegador.");
+                }
+            } else {
+                console.error("Canvas do AR não foi encontrado na tela.");
+            }
+        });
+    </script>
+</body>
+</html>
