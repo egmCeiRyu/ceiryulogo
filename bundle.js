@@ -1,20 +1,18 @@
 (() => {
+  // Definição dos módulos internos da aplicação
   var e = {
     574(e, a, t) {
       const r = () => {
-        XR8.XrController.configure({ imageTargetData: [t(43)] });
-        console.log("🎯 Scanner ativado. Objeto oculto até o escaneamento!");
+        // Configuração de inicialização: desativamos alvos de imagem para rodar SLAM puro
+        XR8.XrController.configure({ imageTargetData: [] });
+        console.log("🌍 Sistema SLAM (World Tracking) Inicializado com sucesso!");
       };
       window.XR8 ? r() : window.addEventListener("xrloaded", r);
-    },
-    43(e) {
-      "use strict";
-      // 🔥 CORREÇÃO: Mudamos o loadAutomatically para FALSE para o objeto não nascer sozinho
-      e.exports = JSON.parse('{"type":"PLANAR","properties":{"top":0,"left":144,"width":941,"height":1254,"isRotated":false,"originalWidth":1254,"originalHeight":1254},"imagePath":"image-targets/marker_luminance.png","metadata":{"type":"PLANAR","properties":{"top":0,"left":144,"width":941,"height":1254,"isRotated":false,"originalWidth":1254,"originalHeight":1254},"imagePath":"image-targets/marker_luminance.png","metadata":null,"name":"marker","resources":{"originalImage":"marker_original.png","croppedImage":"marker_cropped.png","thumbnailImage":"marker_thumbnail.png","luminanceImage":"marker_luminance.png"},"created":1777364648883,"updated":1777366647349},"name":"marker","resources":{"originalImage":"marker_original.png","croppedImage":"marker_cropped.png","thumbnailImage":"marker_thumbnail.png","luminanceImage":"marker_luminance.png"},"created":1777364648883,"updated":1777367342718}');
     }
   },
   a = {};
 
+  // Gerenciador de dependências (Webpack/Rollup minimalista)
   function t(r) {
     var n = a[r];
     if (void 0 !== n) return n.exports;
@@ -22,9 +20,14 @@
     return e[r](d, d.exports, t), d.exports;
   }
 
+  // Inicialização principal da cena e dos componentes
   (() => {
     "use strict";
+    
+    // Executa o módulo de configuração do XR8
     t(574),
+    
+    // Registra o componente padrão do projeto
     window.ecs.registerComponent({
       name: "example-component",
       add: () => {
@@ -32,7 +35,7 @@
       }
     });
 
-    // Configuração ECS: Ativamos o controle de visibilidade atrelado ao Image Target
+    // Árvore de objetos 3D configurada nativamente para SLAM (Ancorado no chão)
     const e = JSON.parse('{' +
       '"objects": {' +
         '"47699d9e-18a5-4f88-a4f9-b8be92e8f74a": {' +
@@ -82,19 +85,6 @@
           '"parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",' +
           '"order": 0.6644431107322474' +
         '},' +
-        '"643be4c9-fa9d-4816-b0ec-114d3956b633": {' +
-          '"id": "643be4c9-fa9d-4816-b0ec-114d3956b633",' +
-          '"position": [0, 0, 0],' +
-          '"rotation": [0, 0, 0, 1],' +
-          '"scale": [1, 1, 1],' +
-          '"geometry": null,' +
-          '"material": null,' +
-          '"parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",' +
-          '"components": {},' +
-          '"name": "Image Target",' +
-          '"imageTarget": {"name": "marker", "loadAutomatically": false},' +
-          '"order": 3.04270821723535' +
-        '},' +
         '"e35dbf9c-8de2-468e-9449-f9563e988696": {' +
           '"id": "e35dbf9c-8de2-468e-9449-f9563e988696",' +
           '"position": [0, 0, 0],' +
@@ -102,15 +92,15 @@
           '"scale": [1, 1, 1],' +
           '"geometry": null,' +
           '"material": null,' +
-          '"parentId": "643be4c9-fa9d-4816-b0ec-114d3956b633",' +
+          '"parentId": "88453035-dc0f-486d-868a-8ff7c2fda864",' +
           '"components": {},' +
           '"gltfModel": {' +
             '"src": {"type": "asset", "asset": "assets/Untitled.glb"},' +
-            '"animationClip": "",' +
+            '"animationClip": "*",' +
             '"loop": true' +
           '},' +
           '"name": "Untitled.glb",' +
-          '"order": 6.430355530712444' +
+          '"order": 2.0' +
         '}' +
       '},' +
       '"spaces": {' +
@@ -123,6 +113,7 @@
       '"entrySpaceId": "88453035-dc0f-486d-868a-8ff7c2fda864"' +
     '}');
 
+    // Limpa propriedades legadas do histórico e inicializa a aplicação ECS
     delete e.history,
     delete e.historyVersion,
     window.ecs.application.init(e);
