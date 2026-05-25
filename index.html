@@ -49,32 +49,49 @@
     <script src="bundle.js"></script>
 
 <script>
-        document.getElementById('screenshot').addEventListener('click', () => {
+        document.getElementById('screenshot').addEventListener('click', async () => {
             // 1. 8th Wallが描画しているcanvas要素を取得
             const canvas = document.querySelector('canvas');
             
-            if (canvas) {
-                try {
-                    // 2. 画質92%のJPG形式（image/jpeg）に変換
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-                    
-                    // 3. ダウンロード用の一次的リンクを作成（拡張子は .jpg）
+            if (!canvas) {
+                console.error("ARのCanvasが見つかりませんでした。");
+                return;
+            }
+
+            try {
+                // 2. 画質92%のJPG形式でBase64データを取得
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                
+                // 3. Base64データをバイナリ（Blob）に変換する処理
+                const response = await fetch(dataUrl);
+                const blob = await response.blob();
+                
+                // 4. Web Share API用のファイルオブジェクトを作成
+                const filename = `screenshot_${Date.now()}.jpg`;
+                const file = new File([blob], filename, { type: 'image/jpeg' });
+
+                // 5. ブラウザがファイルのシェアに対応しているかチェック
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    // ネイティブのシェア画面を直接起動
+                    await navigator.share({
+                        files: [file],
+                        title: 'AR Photo',
+                        text: 'ARで撮影した写真です！'
+                    });
+                    console.log("シェア画面が正常に開きました。");
+                } else {
+                    // 対応していない場合のフォールバック（通常のダウンロード）
+                    console.warn("このブラウザはファイルの直接シェアに対応していません。通常ダウンロードを実行します。");
                     const link = document.createElement('a');
-                    link.download = `screenshot_${Date.now()}.jpg`;
+                    link.download = filename;
                     link.href = dataUrl;
-                    
-                    // 4. 自動的にクリックしてダウンロードを実行
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    
-                    console.log("スクリーンショットがJPG形式で正常に保存されました！");
-                } catch (error) {
-                    console.error("スクリーンショットの撮影に失敗しました:", error);
-                    alert("ブラウザの制限、またはセキュリティ（CORS）の影響で画像を保存できませんでした。");
                 }
-            } else {
-                console.error("ARのCanvasが見つかりませんでした。");
+            } catch (error) {
+                console.error("エラーが発生しました:", error);
+                alert("写真の処理中にエラーが発生しました。");
             }
         });
     </script>
