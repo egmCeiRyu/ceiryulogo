@@ -20,14 +20,16 @@
     return e[r](d, d.exports, t), d.exports;
   }
 
-  // ====================== FIX PARA TELA BRANCA ======================
+  // ====================== FIX DA VIBRAÇÃO ======================
   (() => {
     "use strict";
+
+    let modelAnchored = false;   // ← Evita atualizar toda hora
 
     const hideModule = {
       name: "hide-on-start",
       onStart: () => {
-        console.log("🚀 8th Wall iniciado - escondendo modelo");
+        console.log("🚀 8th Wall iniciado");
         const { scene } = XR8.Threejs.xrScene();
         scene.traverse((obj) => {
           if (obj.name === "Untitled.glb") {
@@ -43,9 +45,11 @@
         event: "reality.imagefound",
         process: ({ detail }) => {
           if (detail.name !== "marker") return;
+          if (modelAnchored) return;   // ← Já ancorado, não mexe mais
 
           const { scene } = XR8.Threejs.xrScene();
           let model = null;
+
           scene.traverse((obj) => {
             if (obj.name === "Untitled.glb") model = obj;
           });
@@ -53,12 +57,18 @@
           if (!model) return;
 
           const { position } = detail;
-          model.position.set(position.x, position.y, position.z);
 
-          if (model.parent !== scene) scene.attach(model);
+          model.position.set(position.x, position.y, position.z);
+          // Removido quaternion (você não quer rotação do marker)
+
+          if (model.parent !== scene) {
+            scene.attach(model);        // Solta definitivamente do Image Target
+          }
 
           model.visible = true;
-          console.log("✅ Marker encontrado! Modelo visível.");
+          modelAnchored = true;
+
+          console.log("✅ Personagem ancorado com sucesso (sem vibração)");
         }
       }]
     };
@@ -66,7 +76,6 @@
     const startModules = () => {
       XR8.addCameraPipelineModule(hideModule);
       XR8.addCameraPipelineModule(anchorModule);
-      console.log("📍 Módulos de marker carregados");
     };
 
     if (window.XR8) startModules();
@@ -80,5 +89,5 @@
   delete sceneData.historyVersion;
   window.ecs.application.init(sceneData);
 
-  console.log("✅ Bundle carregado com sucesso");
+  console.log("✅ Bundle carregado - Vibração corrigida");
 })();
