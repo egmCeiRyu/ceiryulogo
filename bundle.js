@@ -54,7 +54,7 @@
   }
 
   // ============================================================
-  // CENA 3D — igual ao que funcionava
+  // CENA 3D
   // ============================================================
   const scene = {
     entrySpaceId: "88453035-dc0f-486d-868a-8ff7c2fda864",
@@ -116,7 +116,7 @@
         order: 0.6644431107322474
       },
 
-      // --- Image Target — detecta o marker ---
+      // --- Image Target — só para detecção inicial ---
       "643be4c9-fa9d-4816-b0ec-114d3956b633": {
         id: "643be4c9-fa9d-4816-b0ec-114d3956b633",
         name: "Image Target",
@@ -124,12 +124,12 @@
         position: [0, 0.5272021614215185, 0],
         rotation: [0, 0, 0, 1],
         scale: [1, 1, 1],
-        imageTarget: { name: "marker", sticky: true },
+        imageTarget: { name: "marker" },
         geometry: null, material: null, components: {},
         order: 3.04270821723535
       },
 
-      // --- Modelo GLB — filho do Image Target, sticky mantém no lugar ---
+      // --- Modelo GLB — filho do Image Target ---
       "e35dbf9c-8de2-468e-9449-f9563e988696": {
         id: "e35dbf9c-8de2-468e-9449-f9563e988696",
         name: "Untitled.glb",
@@ -150,19 +150,21 @@
   };
 
   // ============================================================
-  // LÓGICA: esconde o modelo até o marker ser escaneado
-  // Usa three.js diretamente — compatível com qualquer versão 8th Wall
+  // LÓGICA PRINCIPAL:
+  // 1. Esconde o modelo até o marker ser escaneado
+  // 2. Ao encontrar o marker, move o modelo para a cena raiz
+  //    (desacopla do Image Target) — fica ancorado no mundo SLAM
   // ============================================================
-  const hideUntilFound = () => {
-    let found = false;
+  const setupAR = () => {
+    let anchored = false;
     let modelObject = null;
 
-    // Esconde o modelo assim que a cena carregar
+    // Aguarda a cena Three.js carregar e esconde o modelo
     const tryHide = setInterval(() => {
-      const scene3d = window.XR8 && XR8.Threejs && XR8.Threejs.xrScene && XR8.Threejs.xrScene();
-      if (!scene3d) return;
+      const xrScene = window.XR8 && XR8.Threejs && XR8.Threejs.xrScene && XR8.Threejs.xrScene();
+      if (!xrScene) return;
 
-      scene3d.scene.traverse((obj) => {
+      xrScene.scene.traverse((obj) => {
         if (obj.name === "Untitled.glb" && !modelObject) {
           modelObject = obj;
           modelObject.visible = false;
@@ -172,22 +174,40 @@
       });
     }, 200);
 
-    // Mostra o modelo quando o marker for encontrado pela primeira vez
+    // Quando o marker for encontrado pela primeira vez:
     window.addEventListener("reality.imagefound", (e) => {
-      if (found || e.detail.name !== "marker") return;
-      found = true;
+      if (anchored || e.detail.name !== "marker") return;
+      if (!modelObject) return;
 
-      if (modelObject) {
-        modelObject.visible = true;
-        console.log("✅ Marker encontrado! Personagem apareceu.");
-      }
+      anchored = true;
+
+      const xrScene = XR8.Threejs.xrScene();
+
+      // Converte a posição do modelo para coordenadas globais (world space)
+      const worldPosition = new THREE.Vector3();
+      const worldQuaternion = new THREE.Quaternion();
+      const worldScale = new THREE.Vector3();
+      modelObject.matrixWorld.decompose(worldPosition, worldQuaternion, worldScale);
+
+      // Desacopla do Image Target e move para a cena raiz
+      xrScene.scene.attach(modelObject);
+
+      // Garante que a posição global foi preservada
+      modelObject.position.copy(worldPosition);
+      modelObject.quaternion.copy(worldQuaternion);
+      modelObject.scale.copy(worldScale);
+
+      // Torna visível — agora está ancorado no mundo via SLAM
+      modelObject.visible = true;
+
+      console.log("✅ Marker encontrado! Personagem ancorado no mundo.");
     });
   };
 
   if (window.XR8) {
-    hideUntilFound();
+    setupAR();
   } else {
-    window.addEventListener("xrloaded", hideUntilFound);
+    window.addEventListener("xrloaded", setupAR);
   }
 
   // ============================================================
