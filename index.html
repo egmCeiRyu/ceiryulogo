@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Fixado HTML Puro</title>
+  <title>AR Project - Fixado Definitivo</title>
   
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.2.0/aframe.min.js"></script>
 
   <style>
     html, body {
@@ -18,69 +16,44 @@
       height: 100%;
       overflow: hidden;
     }
-    /* A nossa cena reserva começa totalmente oculta */
-    #cena-fixa {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1000;
-    }
   </style>
 </head>
 <body>
 
   <script src="bundle.js"></script>
 
-  <div id="cena-fixa">
-    <a-scene embedded vr-mode-ui="enabled: false">
-      <a-assets>
-        <a-asset-item id="meu-modelo" src="assets/Untitled.glb"></a-asset-item>
-      </a-assets>
-
-      <a-entity id="objeto-estatico" gltf-model="#meu-modelo" position="0 0 0" scale="1 1 1"></a-entity>
-
-      <a-entity camera position="0 0 0"></a-entity>
-    </a-scene>
-  </div>
-
   <script>
-    let travouEAnchor = false;
+    let jáEscaneou = false;
 
+    // Aguarda o motor do 8th Wall inicializar
     window.addEventListener('xrloaded', () => {
       
-      // Escuta o momento exato em que a câmera acha a imagem do anime
+      // 1. Interceptamos o evento de quando o motor PERDE o papel de vista
+      window.addEventListener('xrimagelost', (event) => {
+        if (jáEscaneou) {
+          // 🔥 TRUQUE DE MESTRE: Paramos o erro imediatamente!
+          // Impedimos que o 8th Wall avise os componentes internos para sumirem com o personagem.
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true); // O 'true' garante que a gente capture o evento ANTES do bundle rodar
+
+      // 2. Quando a câmera achar o anime pela primeira vez
       window.addEventListener('xrimagefound', (event) => {
-        
-        if (event.detail.name === 'marker' && !travouEAnchor) {
-          travouEAnchor = true;
-          console.log("🎯 Alvo detectado! Capturando coordenadas espaciais...");
+        if (event.detail.name === 'marker' && !jáEscaneou) {
+          jáEscaneou = true;
+          console.log("🎯 Alvo detectado a primeira vez! Travando o personagem...");
 
-          // 1. Captura a posição tridimensional de onde a imagem estava
-          const pos = event.detail.position;
-          const rot = event.detail.rotation;
-
-          // 2. Configura o nosso modelo reserva do HTML na posição exata capturada
-          const objetoEstatico = document.getElementById('objeto-estatico');
-          if (objetoEstatico) {
-            objetoEstatico.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-            objetoEstatico.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`);
-          }
-
-          // 3. Mostra a cena estática do HTML por cima de tudo
-          document.getElementById('cena-fixa').style.display = 'block';
-
-          // 4. DESLIGA O TRACKING DO 8TH WALL DE VEZ
-          // Tiramos os alvos de imagem. O motor para de rastrear e o objeto vira uma estátua.
-          if (window.XR8 && window.XR8.XrController) {
-            window.XR8.XrController.configure({ imageTargetData: [] });
-          }
-
-          console.log("🔒 Sucesso absoluto! Objeto clonado e isolado do motor do 8th Wall.");
+          // Avisamos o motor do 8th Wall para parar de recalcular a posição da imagem.
+          // Assim ele não rotaciona mais junto com o papel e fica preso no espaço real (SLAM).
+          setTimeout(() => {
+            if (window.XR8 && window.XR8.XrController) {
+              window.XR8.XrController.configure({ imageTargetData: [] });
+            }
+          }, 200);
         }
       });
+
     });
   </script>
 
