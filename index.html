@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Fixed Anchor Clone</title>
+  <title>AR Project - Definitivo Fixo</title>
   
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
@@ -23,60 +23,62 @@
   <script src="bundle.js"></script>
 
   <script>
-    let jaEscaneou = false;
+    let jaFixou = false;
 
+    // Aguarda o motor do 8th Wall inicializar
     window.addEventListener('xrloaded', () => {
       
+      // Escuta o evento nativo de quando a imagem do anime é reconhecida
       window.addEventListener('xrimagefound', (event) => {
-        // Verifica se é o marcador correto e se é a primeira leitura
-        if (event.detail.name === 'marker' && !jaEscaneou) {
-          jaEscaneou = true;
-          console.log("🎯 Alvo detectado! Clonando e fixando o personagem no mundo real...");
+        if (event.detail.name === 'marker' && !jaFixou) {
+          jaFixou = true;
+          console.log("🎯 Imagem detectada! Travando o objeto no espaço real...");
 
-          // 1. Pega os dados tridimensionais exatos do papel na mesa
-          const pos = event.detail.position;
-          const rot = event.detail.rotation;
-          const scale = event.detail.scale || {x: 1, y: 1, z: 1};
+          // 1. Pega os dados de posição e rotação reais do mundo no momento do scan
+          const posicaoMundo = event.detail.position;
+          const rotacaoMundo = event.detail.rotation;
 
           if (window.ecs && window.ecs.application && window.ecs.application.scene) {
-            const scene = window.ecs.application.scene;
+            const sceneEcs = window.ecs.application.scene;
             
-            // IDs originais do seu projeto
-            const idDoModeloOriginal = "e35dbf9c-8de2-468e-9449-f9563e988696";
-            const modeloOriginal = scene.entities[idDoModeloOriginal];
+            // ID do componente do modelo 3D (Untitled.glb)
+            const idDoModelo = "e35dbf9c-8de2-468e-9449-f9563e988696";
+            const entidadeModelo = sceneEcs.entities[idDoModelo];
 
-            if (modeloOriginal) {
-              // 2. CRIA UMA NOVA ENTIDADE (O CLONE) FIXA NO MUNDO
-              const personagemFixo = scene.createEntity();
+            // Verifica se o Three.js nativo está acessível no objeto
+            if (entidadeModelo && entidadeModelo.object3D) {
+              const objetoThree = entidadModelo.object3D;
+
+              // 2. Desvincula o objeto do container do Image Target
+              // Jogamos o objeto direto na raiz da cena global do Three.js (fora do controle do ECS)
+              if (objetoThree.parent && objetoThree.parent.parent) {
+                const cenaGlobalThree = objetoThree.parent.parent;
+                cenaGlobalThree.attach(objetoThree);
+              }
+
+              // 3. Imobiliza as coordenadas e ângulos
+              // Forçamos o objeto a assumir a posição exata detectada na mesa, sem herdar movimentos da câmera
+              objetoThree.position.set(posicaoMundo.x, posicaoMundo.y, posicaoMundo.z);
+              objetoThree.rotation.set(rotacaoMundo.x, rotacaoMundo.y, rotacaoMundo.z);
               
-              // Define o pai dele direto na raiz do mundo (Default Space / SLAM)
-              if (modeloOriginal.parent && modeloOriginal.parent.parent) {
-                scene.changeParent(personagemFixo, modeloOriginal.parent.parent);
+              // 4. Desativamos as atualizações automáticas de matriz do 8th Wall para este objeto
+              objetoThree.matrixAutoUpdate = false;
+              objetoThree.updateMatrix();
+
+              // 5. Blindamos a visibilidade: ele nunca mais vai sumir, mesmo sem o papel na tela
+              objetoThree.visible = true;
+              Object.defineProperty(objetoThree, 'visible', {
+                get: () => true,
+                set: () => {}, // Ignora ordens do motor tentando ocultar o modelo
+                configurable: false
+              });
+
+              // 6. Removemos a lógica de sincronização antiga para evitar conflitos de rotação
+              if (entidadeModelo.transform) {
+                delete entidadeModelo.transform;
               }
 
-              // 3. COPIA O MODELO 3D PARA O CLONE
-              if (modeloOriginal.gltfModel) {
-                personagemFixo.gltfModel = {
-                  src: modeloOriginal.gltfModel.src,
-                  animationClip: modeloOriginal.gltfModel.animationClip,
-                  loop: modeloOriginal.gltfModel.loop
-                };
-              }
-
-              // 4. TRAVA A POSIÇÃO E ROTAÇÃO NO ESPAÇO REAL
-              // O objeto agora pertence ao chão e ignora para onde a câmera aponta
-              personagemFixo.transform.position = [pos.x, pos.y, pos.z];
-              personagemFixo.transform.rotation = [rot.x, rot.y, rot.z, rot.w || 1];
-              personagemFixo.transform.scale = [scale.x, scale.y, scale.z];
-
-              // Força o clone a ficar visível para sempre
-              personagemFixo.visibleComponent = { visible: true };
-
-              // 5. DELETA O MODELO ORIGINAL DO MARCADOR
-              // Remove o objeto que ficava sumindo e rotacionando com a foto
-              scene.destroyEntity(modeloOriginal);
-
-              console.log("🚀 Personagem clonado e imobilizado com sucesso no SLAM!");
+              console.log("✅ Objeto travado com sucesso no WebGL! Ele virou uma estátua estática.");
             }
           }
         }
