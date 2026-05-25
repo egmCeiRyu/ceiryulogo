@@ -17,13 +17,27 @@
     <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 
     <style>
+        /* 【新規】カメラが起動するまで画面全体を隠すスタイル */
+        body {
+            background-color: #000000; /* カメラ起動前は黒画面（またはローディング画面） */
+        }
+        
+        canvas {
+            opacity: 0;
+            transition: opacity 0.5s ease; /* ふわっと表示させるアニメーション */
+        }
+
+        canvas.camera-ready {
+            opacity: 1 !important;
+        }
+
         /* スクリーンショットボタンのスタイリング */
         .screenshot-btn {
             position: absolute;
-            bottom: 30px; /* 画面下部からの距離 */
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 999; /* ARのキャンバスより前面に表示 */
+            z-index: 999;
             width: 70px;
             height: 70px;
             background-color: rgba(255, 255, 255, 0.7);
@@ -33,6 +47,11 @@
             outline: none;
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
             transition: transform 0.1s ease, background-color 0.2s;
+            visibility: hidden; /* カメラが起動するまでボタンも隠す */
+        }
+
+        .screenshot-btn.camera-ready {
+            visibility: visible;
         }
 
         /* ボタンを押したときのエフェクト */
@@ -48,30 +67,47 @@
     <script src="bundle.js"></script>
 
     <script>
-        // ページ読み込み時に8th Wallのスクリーンショットモジュールを有効化する
+        // ページ読み込み時に8th Wallのスクリーンショットモジュールを有効化
         window.addEventListener('xrloaded', () => {
             if (window.XR8 && XR8.canvasScreenshot) {
                 XR8.addCameraPipelineModule(XR8.canvasScreenshot().cameraPipelineModule());
-                console.log("8th Wall Screenshot module loaded successfully.");
+                console.log("8th Wall Screenshot module loaded.");
             }
+
+            // 【新規】8th Wallのカメラフィードが実際に開始されたイベントを検知
+            XR8.addCameraPipelineModule({
+                name: 'camera-ready-detector',
+                onStart: () => {
+                    console.log("Camera is running and active!");
+                    
+                    // カメラが無事に起動したら、一瞬遅らせて3Dとキャンバスを綺麗にフェードイン表示させる
+                    setTimeout(() => {
+                        const canvas = document.querySelector('canvas');
+                        const btn = document.getElementById('screenshot');
+                        
+                        if (canvas) canvas.classList.add('camera-ready');
+                        if (btn) btn.classList.add('camera-ready');
+                    }, 300); // 300msの微調整（環境に合わせて変更可能）
+                }
+            });
         });
 
+        // スクリーンショット撮影ロジック
         document.getElementById('screenshot').addEventListener('click', async () => {
             if (typeof XR8 === 'undefined' || !XR8.canvasScreenshot) {
                 console.error("XR8 または Screenshot モジュールが見つかりません。");
-                alert("ARシステムがまだ準備中、または対応していません。");
                 return;
             }
 
             try {
-                // 1. 8th WallのAPIを正しくPromiseとして呼び出し、Base64文字列を取得
+                // 1. 8th WallのAPIからBase64文字列を取得
                 const base64Data = await XR8.canvasScreenshot().takeScreenshot();
                 
                 if (!base64Data) {
                     throw new Error("スクリーンショットのデータが空です。");
                 }
 
-                // 2. 取得したBase64データをJPGのデータURLスキームに変形
+                // 2. データをJPGのデータURLスキームに変形
                 const dataUrl = "data:image/jpeg;base64," + base64Data;
                 
                 // 3. Base64データをバイナリ（Blob）に変換
@@ -89,10 +125,8 @@
                         title: 'AR Photo',
                         text: 'ARで撮影した写真です！'
                     });
-                    console.log("シェア画面が開きました。");
                 } else {
-                    // シェア非対応ブラウザの場合の通常のダウンロードフォールバック
-                    console.warn("シェア非対応の環境です。通常のダウンロードを実行します。");
+                    // 通常のダウンロードフォールバック
                     const link = document.createElement('a');
                     link.download = filename;
                     link.href = dataUrl;
@@ -102,7 +136,7 @@
                 }
             } catch (error) {
                 console.error("エラーが発生しました:", error);
-                alert("写真の処理中にエラーが発生しました。詳細はコンソールを確認してください。");
+                alert("写真の処理中にエラーが発生しました。");
             }
         });
     </script>
