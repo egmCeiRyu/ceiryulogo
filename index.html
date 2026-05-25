@@ -3,88 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Definitivo Fixo</title>
-  
+  <title>AR Project - Fixed Anchor</title>
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-  </style>
 </head>
 <body>
-
   <script src="bundle.js"></script>
-
-  <script>
-    let jaFixou = false;
-
-    // Aguarda o motor do 8th Wall inicializar
-    window.addEventListener('xrloaded', () => {
-      
-      // Escuta o evento nativo de quando a imagem do anime é reconhecida
-      window.addEventListener('xrimagefound', (event) => {
-        if (event.detail.name === 'marker' && !jaFixou) {
-          jaFixou = true;
-          console.log("🎯 Imagem detectada! Travando o objeto no espaço real...");
-
-          // 1. Pega os dados de posição e rotação reais do mundo no momento do scan
-          const posicaoMundo = event.detail.position;
-          const rotacaoMundo = event.detail.rotation;
-
-          if (window.ecs && window.ecs.application && window.ecs.application.scene) {
-            const sceneEcs = window.ecs.application.scene;
-            
-            // ID do componente do modelo 3D (Untitled.glb)
-            const idDoModelo = "e35dbf9c-8de2-468e-9449-f9563e988696";
-            const entidadeModelo = sceneEcs.entities[idDoModelo];
-
-            // Verifica se o Three.js nativo está acessível no objeto
-            if (entidadeModelo && entidadeModelo.object3D) {
-              const objetoThree = entidadModelo.object3D;
-
-              // 2. Desvincula o objeto do container do Image Target
-              // Jogamos o objeto direto na raiz da cena global do Three.js (fora do controle do ECS)
-              if (objetoThree.parent && objetoThree.parent.parent) {
-                const cenaGlobalThree = objetoThree.parent.parent;
-                cenaGlobalThree.attach(objetoThree);
-              }
-
-              // 3. Imobiliza as coordenadas e ângulos
-              // Forçamos o objeto a assumir a posição exata detectada na mesa, sem herdar movimentos da câmera
-              objetoThree.position.set(posicaoMundo.x, posicaoMundo.y, posicaoMundo.z);
-              objetoThree.rotation.set(rotacaoMundo.x, rotacaoMundo.y, rotacaoMundo.z);
-              
-              // 4. Desativamos as atualizações automáticas de matriz do 8th Wall para este objeto
-              objetoThree.matrixAutoUpdate = false;
-              objetoThree.updateMatrix();
-
-              // 5. Blindamos a visibilidade: ele nunca mais vai sumir, mesmo sem o papel na tela
-              objetoThree.visible = true;
-              Object.defineProperty(objetoThree, 'visible', {
-                get: () => true,
-                set: () => {}, // Ignora ordens do motor tentando ocultar o modelo
-                configurable: false
-              });
-
-              // 6. Removemos a lógica de sincronização antiga para evitar conflitos de rotação
-              if (entidadeModelo.transform) {
-                delete entidadeModelo.transform;
-              }
-
-              console.log("✅ Objeto travado com sucesso no WebGL! Ele virou uma estátua estática.");
-            }
-          }
-        }
-      });
-    });
-  </script>
-
 </body>
 </html>
