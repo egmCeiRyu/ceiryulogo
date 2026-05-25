@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Fixado Sem Erros</title>
+  <title>AR Project - Fixado HTML Puro</title>
   
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.2.0/aframe.min.js"></script>
 
   <style>
     html, body {
@@ -16,57 +18,67 @@
       height: 100%;
       overflow: hidden;
     }
+    /* A nossa cena reserva começa totalmente oculta */
+    #cena-fixa {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
 
   <script src="bundle.js"></script>
 
-  <script>
-    let alvoDetectado PeloMenosUmaVez = false;
+  <div id="cena-fixa">
+    <a-scene embedded vr-mode-ui="enabled: false">
+      <a-assets>
+        <a-asset-item id="meu-modelo" src="assets/Untitled.glb"></a-asset-item>
+      </a-assets>
 
-    // Aguarda o motor do 8th Wall carregar na página
+      <a-entity id="objeto-estatico" gltf-model="#meu-modelo" position="0 0 0" scale="1 1 1"></a-entity>
+
+      <a-entity camera position="0 0 0"></a-entity>
+    </a-scene>
+  </div>
+
+  <script>
+    let travouEAnchor = false;
+
     window.addEventListener('xrloaded', () => {
       
-      // Escuta o evento nativo de quando a câmera acha o anime
+      // Escuta o momento exato em que a câmera acha a imagem do anime
       window.addEventListener('xrimagefound', (event) => {
-        if (event.detail.name === 'marker' && !alvoDetectadoPeloMenosUmaVez) {
-          alvoDetectadoPeloMenosUmaVez = true;
-          console.log("🎯 Primeiro scan feito! Travando o personagem na cena...");
+        
+        if (event.detail.name === 'marker' && !travouEAnchor) {
+          travouEAnchor = true;
+          console.log("🎯 Alvo detectado! Capturando coordenadas espaciais...");
 
-          // Deixa o motor processar o primeiro frame do modelo
-          setTimeout(() => {
-            if (window.ecs && window.ecs.application && window.ecs.application.scene) {
-              const scene = window.ecs.application.scene;
-              
-              // O ID do componente de imagem do seu projeto
-              const idDoImageTarget = "643be4c9-fa9d-4816-b0ec-114d3956b633";
-              const entidadeAlvo = scene.entities[idDoImageTarget];
+          // 1. Captura a posição tridimensional de onde a imagem estava
+          const pos = event.detail.position;
+          const rot = event.detail.rotation;
 
-              if (entidadeAlvo) {
-                // 🔥 O TRUQUE DEFINITIVO:
-                // Interceptamos o componente que o 8th Wall usa para esconder o objeto.
-                // Substituímos a função de 'visible' para retornar SEMPRE true.
-                // Assim, quando o motor mandar o comando "esconda o objeto porque o papel sumiu",
-                // o nosso código ignora e mantém o personagem visível na tela para sempre!
-                if (entidadeAlvo.visibleComponent) {
-                  Object.defineProperty(entidadeAlvo.visibleComponent, 'visible', {
-                    get: () => true,
-                    set: () => {}, // Engana o motor impedindo-o de mudar para false
-                    configurable: false
-                  });
-                }
+          // 2. Configura o nosso modelo reserva do HTML na posição exata capturada
+          const objetoEstatico = document.getElementById('objeto-estatico');
+          if (objetoEstatico) {
+            objetoEstatico.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+            objetoEstatico.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`);
+          }
 
-                // Desliga o rastreador de imagem para ele parar de atualizar a rotação com o papel.
-                // O personagem agora fica ancorado na última posição espacial calculada pelo SLAM.
-                if (window.XR8 && window.XR8.XrController) {
-                  window.XR8.XrController.configure({ imageTargetData: [] });
-                }
-                
-                console.log("🔒 Personagem imobilizado e fixado no mundo real!");
-              }
-            }
-          }, 100);
+          // 3. Mostra a cena estática do HTML por cima de tudo
+          document.getElementById('cena-fixa').style.display = 'block';
+
+          // 4. DESLIGA O TRACKING DO 8TH WALL DE VEZ
+          // Tiramos os alvos de imagem. O motor para de rastrear e o objeto vira uma estátua.
+          if (window.XR8 && window.XR8.XrController) {
+            window.XR8.XrController.configure({ imageTargetData: [] });
+          }
+
+          console.log("🔒 Sucesso absoluto! Objeto clonado e isolado do motor do 8th Wall.");
         }
       });
     });
