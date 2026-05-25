@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AR Project - Fixado Definitivo</title>
+  <title>AR Project - Fixed Anchor Events</title>
   
   <script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
   <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="image, slam"></script>
@@ -23,34 +23,41 @@
   <script src="bundle.js"></script>
 
   <script>
-    let jáEscaneou = false;
+    let jaEscaneouPeloMenosUmaVez = false;
 
-    // Aguarda o motor do 8th Wall inicializar
+    // Aguarda o ecossistema do 8th Wall carregar por completo na página
     window.addEventListener('xrloaded', () => {
       
-      // 1. Interceptamos o evento de quando o motor PERDE o papel de vista
+      // 1. CAPTURA O EVENTO DE PERDA (De acordo com a API do 8th Wall)
+      // O truque aqui é usar o parâmetro 'true' no final (Event Capture).
+      // Isto faz o nosso HTML intercetar o evento ANTES que ele chegue ao bundle.js!
       window.addEventListener('xrimagelost', (event) => {
-        if (jáEscaneou) {
-          // 🔥 TRUQUE DE MESTRE: Paramos o erro imediatamente!
-          // Impedimos que o 8th Wall avise os componentes internos para sumirem com o personagem.
+        if (jaEscaneouPeloMenosUmaVez) {
+          // 🔥 SABOTAGEM DO BUNDLE: Bloqueamos o evento de propagar.
+          // O bundle.js nunca vai saber que o papel sumiu da mesa!
           event.stopImmediatePropagation();
+          event.stopPropagation();
           event.preventDefault();
+          console.log("🔒 O 8th Wall tentou sumir com o personagem, mas o HTML bloqueou!");
         }
-      }, true); // O 'true' garante que a gente capture o evento ANTES do bundle rodar
+      }, true); 
 
-      // 2. Quando a câmera achar o anime pela primeira vez
+      // 2. CAPTURA O EVENTO DE SUCESSO (Quando lê o anime pela primeira vez)
       window.addEventListener('xrimagefound', (event) => {
-        if (event.detail.name === 'marker' && !jáEscaneou) {
-          jáEscaneou = true;
-          console.log("🎯 Alvo detectado a primeira vez! Travando o personagem...");
+        if (event.detail.name === 'marker' && !jaEscaneouPeloMenosUmaVez) {
+          jaEscaneouPeloMenosUmaVez = true;
+          console.log("🎯 Primeiro scan detetado com sucesso!");
 
-          // Avisamos o motor do 8th Wall para parar de recalcular a posição da imagem.
-          // Assim ele não rotaciona mais junto com o papel e fica preso no espaço real (SLAM).
+          // Damos um tempo mínimo (300ms) para o motor calcular a física de onde o papel está.
+          // Depois, desligamos o recalculamento da câmara para o objeto não ficar a girar com o telemóvel.
           setTimeout(() => {
             if (window.XR8 && window.XR8.XrController) {
+              // Limpa o array de imagens ativas. O tracking do papel para, 
+              // e o motor passa a segurar o boneco no mesmo ponto usando o giroscópio (SLAM).
               window.XR8.XrController.configure({ imageTargetData: [] });
+              console.log("🔒 Posição congelada e estabilizada no mundo real.");
             }
-          }, 200);
+          }, 300);
         }
       });
 
