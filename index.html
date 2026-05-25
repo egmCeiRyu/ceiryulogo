@@ -44,44 +44,49 @@
     </style>
 </head>
 <body>
-    <button id="screenshot" class="screenshot-btn" aria-label="Tirar Foto"></button>
+    <button id="screenshot" class="screenshot-btn" aria-label="写真を撮る"></button>
 
     <script src="bundle.js"></script>
 
 <script>
         document.getElementById('screenshot').addEventListener('click', async () => {
-            // 1. 8th Wallが描画しているcanvas要素を取得
-            const canvas = document.querySelector('canvas');
-            
-            if (!canvas) {
-                console.error("ARのCanvasが見つかりませんでした。");
+            // 8th Wallのエンジン(XR8)が読み込まれているか確認
+            if (typeof XR8 === 'undefined') {
+                console.error("XR8が見つかりません。");
                 return;
             }
 
             try {
-                // 2. 画質92%のJPG形式でBase64データを取得
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                // 1. 8th Wall公式のスクリーンショットAPIを呼び出す
+                // これにより、カメラ映像と3Dオブジェクトが同期した正しい画像が生成されます（黒画面対策）。
+                const screenshotData = XR8.CanvasScreenshot.takeScreenshot();
                 
-                // 3. Base64データをバイナリ（Blob）に変換する処理
+                if (!screenshotData || !screenshotData.toDataUrl) {
+                    throw new Error("スクリーンショットデータの取得に失敗しました。");
+                }
+
+                // 2. データを画質92%のJPG（image/jpeg）形式として取得
+                const dataUrl = screenshotData.toDataUrl('image/jpeg', 0.92);
+                
+                // 3. Base64データをバイナリ（Blob）に変換
                 const response = await fetch(dataUrl);
                 const blob = await response.blob();
                 
-                // 4. Web Share API用のファイルオブジェクトを作成
+                // 4. ファイルオブジェクトを作成
                 const filename = `screenshot_${Date.now()}.jpg`;
                 const file = new File([blob], filename, { type: 'image/jpeg' });
 
-                // 5. ブラウザがファイルのシェアに対応しているかチェック
+                // 5. ネイティブシェア画面の起動チェック
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    // ネイティブのシェア画面を直接起動
                     await navigator.share({
                         files: [file],
                         title: 'AR Photo',
                         text: 'ARで撮影した写真です！'
                     });
-                    console.log("シェア画面が正常に開きました。");
+                    console.log("シェア画面が開きました。");
                 } else {
-                    // 対応していない場合のフォールバック（通常のダウンロード）
-                    console.warn("このブラウザはファイルの直接シェアに対応していません。通常ダウンロードを実行します。");
+                    // シェア非対応ブラウザの場合の通常のダウンロード
+                    console.warn("シェア非対応の環境です。通常のダウンロードを実行します。");
                     const link = document.createElement('a');
                     link.download = filename;
                     link.href = dataUrl;
